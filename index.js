@@ -48,6 +48,158 @@ const verifyToken = (req, res, next) => {
 };
 
 let useMongo = false;
+
+
+// Hybrid Database Setup (with In-Memory fallback for robustness)
+const memoryArtifacts = [];
+let memoryLikes = [];
+
+// Seed an initial artifact for local memory testing
+memoryArtifacts.push({
+  _id: new ObjectId("60d5ec498687a412f8e12345"),
+  name: "Rosetta Stone",
+  image: "https://images.unsplash.com/photo-1608985160805-4f40f0653d9e",
+  type: "Documents",
+  historicalContext: "A granodiorite stele inscribed with three versions of a decree issued in Memphis, Egypt, in 196 BC.",
+  createdAt: "196 BC",
+  discoveredAt: "1799",
+  discoveredBy: "Pierre-François Bouchard",
+  presentLocation: "British Museum",
+  adderName: "John Doe",
+  adderEmail: "john@example.com",
+  likeCount: 0
+});
+
+const db = {
+  artifacts: {
+    insertOne: async (doc) => {
+      if (useMongo) {
+        return await artifactsCollection.insertOne(doc);
+      } else {
+        const id = new ObjectId();
+        const newDoc = { _id: id, ...doc };
+        memoryArtifacts.push(newDoc);
+        return { insertedId: id, acknowledged: true };
+      }
+    },
+    find: async (query = {}) => {
+      if (useMongo) {
+        return artifactsCollection.find(query);
+      } else {
+        let filtered = [...memoryArtifacts];
+        if (query.name && query.name.$regex) {
+          const regex = new RegExp(query.name.$regex, query.name.$options || 'i');
+          filtered = filtered.filter(item => regex.test(item.name));
+        }
+        if (query.adderEmail) {
+          filtered = filtered.filter(item => item.adderEmail === query.adderEmail);
+        }
+        if (query._id && query._id.$in) {
+          const ids = query._id.$in.map(id => id.toString());
+          filtered = filtered.filter(item => ids.includes(item._id.toString()));
+        }
+        return {
+          toArray: async () => filtered
+        };
+      }
+    },
+    findOne: async (query) => {
+      if (useMongo) {
+        return await artifactsCollection.findOne(query);
+      } else {
+        const idStr = query._id ? query._id.toString() : null;
+        return memoryArtifacts.find(item => item._id.toString() === idStr) || null;
+      }
+    },
+    updateOne: async (query, updateDoc) => {
+      if (useMongo) {
+        return await artifactsCollection.updateOne(query, updateDoc);
+      } else {
+        const idStr = query._id ? query._id.toString() : null;
+        const index = memoryArtifacts.findIndex(item => item._id.toString() === idStr);
+        if (index !== -1) {
+          if (updateDoc.$set) {
+            memoryArtifacts[index] = {
+              ...memoryArtifacts[index],
+              ...updateDoc.$set
+            };
+          }
+          return { modifiedCount: 1, matchedCount: 1 };
+        }
+        return { modifiedCount: 0, matchedCount: 0 };
+      }
+    },
+    deleteOne: async (query) => {
+      if (useMongo) {
+        return await artifactsCollection.deleteOne(query);
+      } else {
+        const idStr = query._id ? query._id.toString() : null;
+        const index = memoryArtifacts.findIndex(item => item._id.toString() === idStr);
+        if (index !== -1) {
+          memoryArtifacts.splice(index, 1);
+          return { deletedCount: 1 };
+        }
+        return { deletedCount: 0 };
+      }
+    }
+  },
+  likes: {
+    findOne: async (query) => {
+      if (useMongo) {
+        return await likedArtifactsCollection.findOne(query);
+      } else {
+        return memoryLikes.find(like => 
+          like.userEmail === query.userEmail && like.artifactId === query.artifactId
+        ) || null;
+      }
+    },
+    insertOne: async (doc) => {
+      if (useMongo) {
+        return await likedArtifactsCollection.insertOne(doc);
+      } else {
+        const id = new ObjectId();
+        memoryLikes.push({ _id: id, ...doc });
+        return { insertedId: id, acknowledged: true };
+      }
+    },
+    deleteOne: async (query) => {
+      if (useMongo) {
+        return await likedArtifactsCollection.deleteOne(query);
+      } else {
+        const index = memoryLikes.findIndex(like => 
+          like.userEmail === query.userEmail && like.artifactId === query.artifactId
+        );
+        if (index !== -1) {
+          memoryLikes.splice(index, 1);
+          return { deletedCount: 1 };
+        }
+        return { deletedCount: 0 };
+      }
+    },
+    deleteMany: async (query) => {
+      if (useMongo) {
+        return await likedArtifactsCollection.deleteMany(query);
+      } else {
+        const initialLength = memoryLikes.length;
+        memoryLikes = memoryLikes.filter(like => like.artifactId !== query.artifactId);
+        return { deletedCount: initialLength - memoryLikes.length };
+      }
+    },
+    find: async (query = {}) => {
+      if (useMongo) {
+        return likedArtifactsCollection.find(query);
+      } else {
+        let filtered = [...memoryLikes];
+        if (query.userEmail) {
+          filtered = filtered.filter(like => like.userEmail === query.userEmail);
+        }
+        return {
+          toArray: async () => filtered
+        };
+      }
+    }
+  }
+};
 let database;
 let artifactsCollection;
 let likedArtifactsCollection;
