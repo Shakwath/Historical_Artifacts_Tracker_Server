@@ -69,6 +69,34 @@ async function run() {
 }
 run().catch(console.dir);
 
+// JWT Authentication Routes
+app.post('/jwt', async (req, res) => {
+  const user = req.body;
+  if (!user || !user.email) {
+    return res.status(400).send({ message: 'Email is required' });
+  }
+  const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '5h' });
+  
+  res
+    .cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+    })
+    .send({ success: true, token });
+});
+
+app.post('/logout', async (req, res) => {
+  res
+    .clearCookie('token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+      maxAge: 0
+    })
+    .send({ success: true });
+});
+
 app.get('/', (req, res) => {
   res.send('server is running successfully');
 });
