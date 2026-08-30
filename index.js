@@ -357,6 +357,39 @@ app.delete('/artifacts/:id', verifyToken, async (req, res) => {
   res.send({ success: true, result });
 });
 
+// Get My Artifacts (Private)
+app.get('/my-artifacts', verifyToken, async (req, res) => {
+  const email = req.user.email;
+  const query = { adderEmail: email };
+  const cursor = await db.artifacts.find(query);
+  const result = await cursor.toArray();
+  res.send(result);
+});
+
+// Get Liked Artifacts (Private)
+app.get('/liked-artifacts', verifyToken, async (req, res) => {
+  const email = req.user.email;
+  
+  const cursorLikes = await db.likes.find({ userEmail: email });
+  const likes = await cursorLikes.toArray();
+  const artifactIds = likes.map(like => {
+    try {
+      return new ObjectId(like.artifactId);
+    } catch (err) {
+      return null;
+    }
+  }).filter(id => id !== null);
+  
+  if (artifactIds.length === 0) {
+    return res.send([]);
+  }
+  
+  const query = { _id: { $in: artifactIds } };
+  const cursorArtifacts = await db.artifacts.find(query);
+  const result = await cursorArtifacts.toArray();
+  res.send(result);
+});
+
 // Create Artifact (Private)
 app.post('/artifacts', verifyToken, async (req, res) => {
   const artifact = req.body;
