@@ -249,6 +249,25 @@ app.post('/logout', async (req, res) => {
     .send({ success: true });
 });
 
+// Create Artifact (Private)
+app.post('/artifacts', verifyToken, async (req, res) => {
+  const artifact = req.body;
+  
+  if (!artifact.name || !artifact.image || !artifact.type || !artifact.historicalContext ||
+      !artifact.createdAt || !artifact.discoveredAt || !artifact.discoveredBy || !artifact.presentLocation) {
+    return res.status(400).send({ message: 'All fields are required' });
+  }
+  
+  if (req.user.email !== artifact.adderEmail) {
+    return res.status(403).send({ message: 'Forbidden: Email mismatch' });
+  }
+  
+  artifact.likeCount = 0;
+  
+  const result = await db.artifacts.insertOne(artifact);
+  res.status(201).send({ success: true, result });
+});
+
 app.get('/', (req, res) => {
   res.send('server is running successfully');
 });
