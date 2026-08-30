@@ -18,7 +18,7 @@ const port = process.env.PORT || 5000;
 app.use(
   cors({
     origin: [
-      "https://historical-artifacts-tracker-client-two.vercel.app",
+      "https://historical-artifacts-shakwath.web.app",
       "http://localhost:5174",
       "http://localhost:5175",
       "http://localhost:5176",
