@@ -249,6 +249,19 @@ app.post('/logout', async (req, res) => {
     .send({ success: true });
 });
 
+// Get All Artifacts / Search (Public)
+app.get('/artifacts', async (req, res) => {
+  const { search } = req.query;
+  let query = {};
+  if (search) {
+    query = { name: { $regex: search, $options: 'i' } };
+  }
+  
+  const cursor = await db.artifacts.find(query);
+  const result = await cursor.toArray();
+  res.send(result);
+});
+
 // Create Artifact (Private)
 app.post('/artifacts', verifyToken, async (req, res) => {
   const artifact = req.body;
