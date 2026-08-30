@@ -617,34 +617,27 @@ app.get("/liked-artifacts", verifyToken, async (req, res) => {
 });
 
 // =========================
-// Start Server + MongoDB
+// Cached DB Connection Logic
 // =========================
 
-async function startServer() {
-  try {
+let dbConnectionPromise = null;
+
+async function connectDB() {
+  if (dbConnectionPromise) {
+    return dbConnectionPromise;
+  }
+
+  dbConnectionPromise = (async () => {
     // Connect to MongoDB
     await client.connect();
-
-    // Test MongoDB connection
-    await client.db("admin").command({
-      ping: 1,
-    });
-
-    console.log("Pinged your MongoDB deployment.");
     console.log("Successfully connected to MongoDB!");
 
-    // =========================
-    // Database
-    // =========================
-
     const database = client.db("Historical_Artifacts");
-
     console.log("🗄️ Database:", "Historical_Artifacts");
 
     // =========================
     // Create Artifacts Collection
     // =========================
-
     try {
       await database.createCollection("Artifacts");
       console.log("Collection created: Artifacts");
@@ -659,7 +652,6 @@ async function startServer() {
     // =========================
     // Create LikedArtifacts Collection
     // =========================
-
     try {
       await database.createCollection("LikedArtifacts");
       console.log("Collection created: LikedArtifacts");
@@ -674,7 +666,6 @@ async function startServer() {
     // =========================
     // Connect Collections
     // =========================
-
     artifactsCollection = database.collection("Artifacts");
     likedArtifactsCollection = database.collection("LikedArtifacts");
 
@@ -745,29 +736,50 @@ async function startServer() {
     } catch (indexError) {
       console.warn("Warning: Failed to create some MongoDB indexes:", indexError.message);
     }
+  })();
 
-    // =========================
-    // Start Express Server
-    // =========================
-
-    app.listen(port, () => {
-      console.log(`Server is running successfully on port ${port}`);
-      console.log("==========================================");
-      console.log("Database: Historical_Artifacts");
-      console.log("Collection: Artifacts");
-      console.log("Collection: LikedArtifacts");
-      console.log("==========================================");
-    });
-  } catch (error) {
-    console.error("MongoDB connection failed:");
-    console.error(error);
-
-    process.exit(1);
-  }
+  return dbConnectionPromise;
 }
 
 // =========================
-// Start Application
+// DB Connection Middleware
 // =========================
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    console.error("Database connection failed in middleware:", error);
+    res.status(500).json({
+      success: false,
+      message: "Database connection failed",
+    });
+  }
+});
 
-startServer();
+// =========================
+// Start Server (Local Only)
+// =========================
+if (require.main === module) {
+  connectDB()
+    .then(() => {
+      app.listen(port, () => {
+        console.log(`Server is running successfully on port ${port}`);
+        console.log("==========================================");
+        console.log("Database: Historical_Artifacts");
+        console.log("Collection: Artifacts");
+        console.log("Collection: LikedArtifacts");
+        console.log("==========================================");
+      });
+    })
+    .catch((error) => {
+      console.error("MongoDB connection failed:");
+      console.error(error);
+      process.exit(1);
+    });
+}
+
+// =========================
+// Export App for Vercel
+// =========================
+module.exports = app;
