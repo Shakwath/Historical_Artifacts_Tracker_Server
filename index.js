@@ -10,6 +10,7 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 
+// CORS setup to allow credentials for requests from frontend ports
 app.use(cors({
   origin: [
     'http://localhost:5173',
@@ -22,6 +23,7 @@ app.use(cookieParser());
 
 const uri = `mongodb+srv://${process.env.DB_USER.trim()}:${process.env.DB_PASS.trim()}@cluster0.b73grgu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
+// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -48,7 +50,9 @@ const verifyToken = (req, res, next) => {
 };
 
 let useMongo = false;
-
+let database;
+let artifactsCollection;
+let likedArtifactsCollection;
 
 // Hybrid Database Setup (with In-Memory fallback for robustness)
 const memoryArtifacts = [];
@@ -200,13 +204,13 @@ const db = {
     }
   }
 };
-let database;
-let artifactsCollection;
-let likedArtifactsCollection;
 
 async function run() {
   try {
+    // Connect the client to the server (optional starting in v4.7)
     await client.connect();
+    
+    // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
 
@@ -249,6 +253,25 @@ app.post('/logout', async (req, res) => {
     .send({ success: true });
 });
 
+// Create Artifact (Private)
+app.post('/artifacts', verifyToken, async (req, res) => {
+  const artifact = req.body;
+  
+  if (!artifact.name || !artifact.image || !artifact.type || !artifact.historicalContext ||
+      !artifact.createdAt || !artifact.discoveredAt || !artifact.discoveredBy || !artifact.presentLocation) {
+    return res.status(400).send({ message: 'All fields are required' });
+  }
+  
+  if (req.user.email !== artifact.adderEmail) {
+    return res.status(403).send({ message: 'Forbidden: Email mismatch' });
+  }
+  
+  artifact.likeCount = 0;
+  
+  const result = await db.artifacts.insertOne(artifact);
+  res.status(201).send({ success: true, result });
+});
+
 // Get All Artifacts / Search (Public)
 app.get('/artifacts', async (req, res) => {
   const { search } = req.query;
@@ -259,6 +282,39 @@ app.get('/artifacts', async (req, res) => {
   
   const cursor = await db.artifacts.find(query);
   const result = await cursor.toArray();
+  res.send(result);
+});
+
+// Get My Artifacts (Private)
+app.get('/my-artifacts', verifyToken, async (req, res) => {
+  const email = req.user.email;
+  const query = { adderEmail: email };
+  const cursor = await db.artifacts.find(query);
+  const result = await cursor.toArray();
+  res.send(result);
+});
+
+// Get Liked Artifacts (Private)
+app.get('/liked-artifacts', verifyToken, async (req, res) => {
+  const email = req.user.email;
+  
+  const cursorLikes = await db.likes.find({ userEmail: email });
+  const likes = await cursorLikes.toArray();
+  const artifactIds = likes.map(like => {
+    try {
+      return new ObjectId(like.artifactId);
+    } catch (err) {
+      return null;
+    }
+  }).filter(id => id !== null);
+  
+  if (artifactIds.length === 0) {
+    return res.send([]);
+  }
+  
+  const query = { _id: { $in: artifactIds } };
+  const cursorArtifacts = await db.artifacts.find(query);
+  const result = await cursorArtifacts.toArray();
   res.send(result);
 });
 
@@ -357,56 +413,44 @@ app.delete('/artifacts/:id', verifyToken, async (req, res) => {
   res.send({ success: true, result });
 });
 
-// Get My Artifacts (Private)
-app.get('/my-artifacts', verifyToken, async (req, res) => {
-  const email = req.user.email;
-  const query = { adderEmail: email };
-  const cursor = await db.artifacts.find(query);
-  const result = await cursor.toArray();
-  res.send(result);
-});
-
-// Get Liked Artifacts (Private)
-app.get('/liked-artifacts', verifyToken, async (req, res) => {
+// Toggle Like (Private)
+app.post('/artifacts/:id/like', verifyToken, async (req, res) => {
+  const id = req.params.id;
   const email = req.user.email;
   
-  const cursorLikes = await db.likes.find({ userEmail: email });
-  const likes = await cursorLikes.toArray();
-  const artifactIds = likes.map(like => {
-    try {
-      return new ObjectId(like.artifactId);
-    } catch (err) {
-      return null;
-    }
-  }).filter(id => id !== null);
-  
-  if (artifactIds.length === 0) {
-    return res.send([]);
+  let query;
+  try {
+    query = { _id: new ObjectId(id) };
+  } catch (err) {
+    return res.status(400).send({ message: 'Invalid ID format' });
   }
   
-  const query = { _id: { $in: artifactIds } };
-  const cursorArtifacts = await db.artifacts.find(query);
-  const result = await cursorArtifacts.toArray();
-  res.send(result);
-});
-
-// Create Artifact (Private)
-app.post('/artifacts', verifyToken, async (req, res) => {
-  const artifact = req.body;
-  
-  if (!artifact.name || !artifact.image || !artifact.type || !artifact.historicalContext ||
-      !artifact.createdAt || !artifact.discoveredAt || !artifact.discoveredBy || !artifact.presentLocation) {
-    return res.status(400).send({ message: 'All fields are required' });
+  const artifact = await db.artifacts.findOne(query);
+  if (!artifact) {
+    return res.status(404).send({ message: 'Artifact not found' });
   }
   
-  if (req.user.email !== artifact.adderEmail) {
-    return res.status(403).send({ message: 'Forbidden: Email mismatch' });
+  const existingLike = await db.likes.findOne({
+    userEmail: email,
+    artifactId: id
+  });
+  
+  let newCount = artifact.likeCount || 0;
+  let liked = false;
+  
+  if (existingLike) {
+    await db.likes.deleteOne({ userEmail: email, artifactId: id });
+    newCount = Math.max(0, newCount - 1);
+    await db.artifacts.updateOne(query, { $set: { likeCount: newCount } });
+    liked = false;
+  } else {
+    await db.likes.insertOne({ userEmail: email, artifactId: id });
+    newCount = newCount + 1;
+    await db.artifacts.updateOne(query, { $set: { likeCount: newCount } });
+    liked = true;
   }
   
-  artifact.likeCount = 0;
-  
-  const result = await db.artifacts.insertOne(artifact);
-  res.status(201).send({ success: true, result });
+  res.send({ success: true, liked, likeCount: newCount });
 });
 
 app.get('/', (req, res) => {
