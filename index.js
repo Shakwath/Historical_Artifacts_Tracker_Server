@@ -293,6 +293,44 @@ app.get('/artifacts/:id', async (req, res) => {
   res.send({ ...artifact, isLiked });
 });
 
+// Update Artifact (Private)
+app.put('/artifacts/:id', verifyToken, async (req, res) => {
+  const id = req.params.id;
+  const updatedData = req.body;
+  
+  let query;
+  try {
+    query = { _id: new ObjectId(id) };
+  } catch (err) {
+    return res.status(400).send({ message: 'Invalid ID format' });
+  }
+  
+  const artifact = await db.artifacts.findOne(query);
+  if (!artifact) {
+    return res.status(404).send({ message: 'Artifact not found' });
+  }
+  
+  if (artifact.adderEmail !== req.user.email) {
+    return res.status(403).send({ message: 'Unauthorized: You can only update your own artifacts' });
+  }
+  
+  const updateDoc = {
+    $set: {
+      name: updatedData.name,
+      image: updatedData.image,
+      type: updatedData.type,
+      historicalContext: updatedData.historicalContext,
+      createdAt: updatedData.createdAt,
+      discoveredAt: updatedData.discoveredAt,
+      discoveredBy: updatedData.discoveredBy,
+      presentLocation: updatedData.presentLocation
+    }
+  };
+  
+  const result = await db.artifacts.updateOne(query, updateDoc);
+  res.send({ success: true, result });
+});
+
 // Create Artifact (Private)
 app.post('/artifacts', verifyToken, async (req, res) => {
   const artifact = req.body;
