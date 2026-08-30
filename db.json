@@ -1,0 +1,67 @@
+{
+  "Artifacts": [
+    {
+      "_id": "6a93c78e1b4f4c2e8a1d0001",
+      "name": "Antikythera Mechanism",
+      "image": "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=600&auto=format&fit=crop",
+      "type": "Tools",
+      "historicalContext": "The Antikythera mechanism is an ancient Greek hand-powered astronomical calculator. It is widely described as the oldest known example of an analog computer, used to predict astronomical positions and eclipses for calendar and astrological purposes decades in advance.",
+      "createdAt": "150 BC",
+      "discoveredAt": "1901",
+      "discoveredBy": "Valerios Stais",
+      "presentLocation": "National Archaeological Museum, Athens",
+      "adderName": "Arthur Evans",
+      "adderEmail": "evans@knossos.org",
+      "likeCount": 89
+    },
+    {
+      "_id": "6a93c78e1b4f4c2e8a1d0002",
+      "name": "Excalibur Sword",
+      "image": "https://images.unsplash.com/photo-1580640950582-41480c3093ad?q=80&w=600&auto=format&fit=crop",
+      "type": "Weapons",
+      "historicalContext": "Excalibur is the legendary sword of King Arthur, said to possess magical properties and signify the rightful sovereignty of Great Britain. According to myth, it was given to Arthur by the Lady of the Lake and later returned to her waters upon his death.",
+      "createdAt": "5th Century AD",
+      "discoveredAt": "Unknown Era",
+      "discoveredBy": "King Arthur Pendragon",
+      "presentLocation": "Lake of Avalon (Legendary)",
+      "adderName": "Gildas the Historian",
+      "adderEmail": "gildas@britannia.org",
+      "likeCount": 65
+    },
+    {
+      "_id": "6a93c78e1b4f4c2e8a1d0003",
+      "name": "Rosetta Stone",
+      "image": "https://images.unsplash.com/photo-1608155686393-8fdd966d784d?q=80&w=600&auto=format&fit=crop",
+      "type": "Documents",
+      "historicalContext": "The Rosetta Stone is a granodiorite stele inscribed with three versions of a decree issued in Memphis, Egypt, in 196 BC. The top and middle texts are in Ancient Egyptian hieroglyphic and Demotic scripts respectively, while the bottom is in Ancient Greek. It provided the key to modern translation of Egyptian hieroglyphs.",
+      "createdAt": "196 BC",
+      "discoveredAt": "July 15, 1799",
+      "discoveredBy": "Pierre-François Bouchard",
+      "presentLocation": "British Museum, London",
+      "adderName": "Jean-François Champollion",
+      "adderEmail": "champollion@louvre.fr",
+      "likeCount": 54
+    },
+    {
+      "_id": "6a93c78e1b4f4c2e8a1d0004",
+      "name": "Codex Gigas (Devil's Bible)",
+      "image": "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=600&auto=format&fit=crop",
+      "type": "Writings",
+      "historicalContext": "The Codex Gigas is the largest extant medieval manuscript in the world, created in the early 13th century in the Benedictine monastery of Podlažice in Bohemia. It contains the complete Vulgate Bible as well as historical documents, all written in Latin. It is famous for its full-page portrait of the devil.",
+      "createdAt": "1229 AD",
+      "discoveredAt": "1648",
+      "discoveredBy": "Swedish Army",
+      "presentLocation": "National Library of Sweden, Stockholm",
+      "adderName": "Cosmas of Prague",
+      "adderEmail": "cosmas@bohemia.org",
+      "likeCount": 47
+    }
+  ],
+  "LikedArtifacts": [
+    {
+      "userEmail": "shakawathhossain0@gmail.com",
+      "artifactId": "6a93c78e1b4f4c2e8a1d0001",
+      "_id": "6a93d230f67e1f7898c2ebd3"
+    }
+  ]
+}

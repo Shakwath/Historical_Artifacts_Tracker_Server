@@ -15,6 +15,8 @@ app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://localhost:5174',
+    'http://localhost:5175',
+    'http://localhost:5176',
   ],
   credentials: true
 }));
@@ -49,18 +51,142 @@ const verifyToken = (req, res, next) => {
   });
 };
 
-async function run() {
-  try {
-    // Connect the client to the server (optional starting in v4.7)
-    await client.connect();
-    
-    // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+const fs = require('fs');
+const path = require('path');
 
-    const database = client.db('Historical_Artifacts');
-    const artifactsCollection = database.collection('Artifacts');
-    const likedArtifactsCollection = database.collection('LikedArtifacts');
+class MockCollection {
+  constructor(name, dbFile) {
+    this.name = name;
+    this.dbFile = dbFile;
+  }
+  getData() {
+    try {
+      if (!fs.existsSync(this.dbFile)) {
+        fs.writeFileSync(this.dbFile, JSON.stringify({ Artifacts: [], LikedArtifacts: [] }, null, 2));
+      }
+      const data = JSON.parse(fs.readFileSync(this.dbFile, 'utf8'));
+      return data[this.name] || [];
+    } catch (e) {
+      return [];
+    }
+  }
+  saveData(list) {
+    try {
+      let data = {};
+      if (fs.existsSync(this.dbFile)) {
+        data = JSON.parse(fs.readFileSync(this.dbFile, 'utf8'));
+      }
+      data[this.name] = list;
+      fs.writeFileSync(this.dbFile, JSON.stringify(data, null, 2));
+    } catch (e) {
+      console.error("Save mock data error:", e);
+    }
+  }
+  async insertOne(doc) {
+    const list = this.getData();
+    const id = doc._id || new ObjectId().toString();
+    const newDoc = { ...doc, _id: id };
+    list.push(newDoc);
+    this.saveData(list);
+    return { acknowledged: true, insertedId: id };
+  }
+  find(query = {}) {
+    const list = this.getData();
+    let filtered = [...list];
+    if (query.adderEmail) {
+      filtered = filtered.filter(item => item.adderEmail === query.adderEmail);
+    }
+    if (query.userEmail) {
+      filtered = filtered.filter(item => item.userEmail === query.userEmail);
+    }
+    if (query.artifactId) {
+      filtered = filtered.filter(item => item.artifactId === query.artifactId);
+    }
+    if (query.name && query.name.$regex) {
+      const searchRegex = new RegExp(query.name.$regex, 'i');
+      filtered = filtered.filter(item => searchRegex.test(item.name));
+    }
+    if (query._id && query._id.$in) {
+      const ids = query._id.$in.map(id => id.toString());
+      filtered = filtered.filter(item => ids.includes(item._id.toString()));
+    }
+    return {
+      toArray: async () => filtered
+    };
+  }
+  async findOne(query = {}) {
+    const list = this.getData();
+    const match = list.find(item => {
+      if (query._id) {
+        return item._id.toString() === query._id.toString();
+      }
+      if (query.userEmail && query.artifactId) {
+        return item.userEmail === query.userEmail && item.artifactId.toString() === query.artifactId.toString();
+      }
+      return false;
+    });
+    return match || null;
+  }
+  async updateOne(query, updateDoc) {
+    const list = this.getData();
+    const index = list.findIndex(item => item._id.toString() === query._id.toString());
+    if (index === -1) return { matchedCount: 0, modifiedCount: 0 };
+    const item = list[index];
+    if (updateDoc.$set) {
+      Object.keys(updateDoc.$set).forEach(key => {
+        item[key] = updateDoc.$set[key];
+      });
+    }
+    list[index] = item;
+    this.saveData(list);
+    return { matchedCount: 1, modifiedCount: 1 };
+  }
+  async deleteOne(query) {
+    const list = this.getData();
+    let index = -1;
+    if (query._id) {
+      index = list.findIndex(item => item._id.toString() === query._id.toString());
+    } else if (query.userEmail && query.artifactId) {
+      index = list.findIndex(item => item.userEmail === query.userEmail && item.artifactId.toString() === query.artifactId.toString());
+    }
+    if (index === -1) return { deletedCount: 0 };
+    list.splice(index, 1);
+    this.saveData(list);
+    return { deletedCount: 1 };
+  }
+  async deleteMany(query) {
+    let list = this.getData();
+    const initialLen = list.length;
+    if (query.artifactId) {
+      list = list.filter(item => item.artifactId.toString() !== query.artifactId.toString());
+    }
+    this.saveData(list);
+    return { deletedCount: initialLen - list.length };
+  }
+}
+
+async function run() {
+  let artifactsCollection;
+  let likedArtifactsCollection;
+
+  try {
+    try {
+      // Connect the client to the server (optional starting in v4.7)
+      await client.connect();
+      
+      // Send a ping to confirm a successful connection
+      await client.db("admin").command({ ping: 1 });
+      console.log("Pinged your deployment. You successfully connected to MongoDB!");
+
+      const database = client.db('Historical_Artifacts');
+      artifactsCollection = database.collection('Artifacts');
+      likedArtifactsCollection = database.collection('LikedArtifacts');
+    } catch (dbError) {
+      console.warn("Database connection failed! Setting up local db.json fallback:", dbError.message);
+      const dbFile = path.resolve(__dirname, 'db.json');
+      artifactsCollection = new MockCollection('Artifacts', dbFile);
+      likedArtifactsCollection = new MockCollection('LikedArtifacts', dbFile);
+    }
 
     // JWT Authentication Routes
     app.post('/jwt', async (req, res) => {
