@@ -262,6 +262,37 @@ app.get('/artifacts', async (req, res) => {
   res.send(result);
 });
 
+// Get Single Artifact (Public/Protected check)
+app.get('/artifacts/:id', async (req, res) => {
+  const id = req.params.id;
+  const { email } = req.query; 
+  
+  let query;
+  try {
+    query = { _id: new ObjectId(id) };
+  } catch (err) {
+    return res.status(400).send({ message: 'Invalid ID format' });
+  }
+  
+  const artifact = await db.artifacts.findOne(query);
+  if (!artifact) {
+    return res.status(404).send({ message: 'Artifact not found' });
+  }
+  
+  let isLiked = false;
+  if (email) {
+    const like = await db.likes.findOne({
+      userEmail: email,
+      artifactId: id
+    });
+    if (like) {
+      isLiked = true;
+    }
+  }
+  
+  res.send({ ...artifact, isLiked });
+});
+
 // Create Artifact (Private)
 app.post('/artifacts', verifyToken, async (req, res) => {
   const artifact = req.body;
