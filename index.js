@@ -331,6 +331,32 @@ app.put('/artifacts/:id', verifyToken, async (req, res) => {
   res.send({ success: true, result });
 });
 
+// Delete Artifact (Private)
+app.delete('/artifacts/:id', verifyToken, async (req, res) => {
+  const id = req.params.id;
+  
+  let query;
+  try {
+    query = { _id: new ObjectId(id) };
+  } catch (err) {
+    return res.status(400).send({ message: 'Invalid ID format' });
+  }
+  
+  const artifact = await db.artifacts.findOne(query);
+  if (!artifact) {
+    return res.status(404).send({ message: 'Artifact not found' });
+  }
+  
+  if (artifact.adderEmail !== req.user.email) {
+    return res.status(403).send({ message: 'Unauthorized: You can only delete your own artifacts' });
+  }
+  
+  const result = await db.artifacts.deleteOne(query);
+  await db.likes.deleteMany({ artifactId: id });
+  
+  res.send({ success: true, result });
+});
+
 // Create Artifact (Private)
 app.post('/artifacts', verifyToken, async (req, res) => {
   const artifact = req.body;
