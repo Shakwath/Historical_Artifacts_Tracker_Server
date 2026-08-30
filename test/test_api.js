@@ -78,9 +78,10 @@ async function runTests() {
     // 3. GET /artifacts (initial check)
     console.log('\n3. Verifying GET /artifacts');
     const getRes = await request('GET', '/artifacts');
-    console.log(`Status: ${getRes.statusCode}, Count: ${getRes.data.length}`);
+    const initialCount = getRes.data.length;
+    console.log(`Status: ${getRes.statusCode}, Count: ${initialCount}`);
     console.log('Artifacts:', getRes.data.map(a => a.name));
-    if (getRes.statusCode !== 200 || getRes.data.length === 0) throw new Error('GET artifacts failed');
+    if (getRes.statusCode !== 200 || initialCount === 0) throw new Error('GET artifacts failed');
 
     // 4. GET /artifacts with search query
     console.log('\n4. Verifying GET /artifacts?search=Rosetta');
@@ -121,7 +122,7 @@ async function runTests() {
     }, { 'Authorization': `Bearer ${token}` });
     console.log(`Status: ${successPostRes.statusCode}, Success: ${successPostRes.data.success}`);
     if (successPostRes.statusCode !== 201 || !successPostRes.data.success) throw new Error('Artifact creation failed');
-    testArtifactId = successPostRes.data.result.insertedId;
+    testArtifactId = successPostRes.data.insertedId || successPostRes.data.result?.insertedId;
     console.log(`Created artifact ID: ${testArtifactId}`);
 
     // 7. GET /artifacts (all check)
@@ -129,7 +130,7 @@ async function runTests() {
     const allRes = await request('GET', '/artifacts');
     console.log(`Status: ${allRes.statusCode}, Count: ${allRes.data.length}`);
     console.log('Artifacts:', allRes.data.map(a => a.name));
-    if (allRes.data.length !== 2) throw new Error('Count mismatch after addition');
+    if (allRes.data.length !== initialCount + 1) throw new Error('Count mismatch after addition');
 
     // 8. GET /artifacts/:id
     console.log(`\n8. Verifying GET /artifacts/${testArtifactId}?email=test@example.com`);
@@ -201,7 +202,7 @@ async function runTests() {
     console.log('\n16. Verifying GET /artifacts after deletion');
     const finalGetRes = await request('GET', '/artifacts');
     console.log(`Status: ${finalGetRes.statusCode}, Count: ${finalGetRes.data.length}`);
-    if (finalGetRes.data.length !== 1) throw new Error('Artifact was not deleted correctly');
+    if (finalGetRes.data.length !== initialCount) throw new Error('Artifact was not deleted correctly');
 
     console.log('\n=========================================');
     console.log('SUCCESS: All 16 API endpoints verified!');

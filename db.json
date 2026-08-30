@@ -55,6 +55,34 @@
       "adderName": "Cosmas of Prague",
       "adderEmail": "cosmas@bohemia.org",
       "likeCount": 47
+    },
+    {
+      "name": "Rosetta Stone",
+      "image": "https://upload.wikimedia.org/wikipedia/commons/3/3b/Rosetta_Stone.JPG",
+      "type": "Documents",
+      "historicalContext": "The Rosetta Stone is one of the most important historical artifacts in the world. It contains the same decree written in three different scripts: Ancient Greek, Demotic, and Egyptian hieroglyphs. Its discovery played a crucial role in helping scholars decode ancient Egyptian hieroglyphs and greatly improved our understanding of Ancient Egyptian civilization.",
+      "createdAt": "Ptolemaic Period, 196 BC",
+      "discoveredAt": "July 1799",
+      "discoveredBy": "Pierre-François Bouchard",
+      "presentLocation": "The British Museum, London, United Kingdom",
+      "adderName": "Shakawath Hossain",
+      "adderEmail": "shakawathhossain0@gmail.com",
+      "likeCount": 1,
+      "_id": "6a9431b5f67e1f7898c2ebd9"
+    },
+    {
+      "name": "Antikythera Mechanism",
+      "image": "https://upload.wikimedia.org/wikipedia/commons/0/09/NAMA_Machine_d%27Anticyth%C3%A8re_1.jpg",
+      "type": "Other",
+      "historicalContext": "The Antikythera Mechanism is an ancient Greek mechanical device believed to have been used to calculate and display astronomical cycles. Its complex system of gears demonstrates an advanced understanding of mathematics, astronomy, and mechanical engineering in the ancient world. It is often regarded as one of the earliest known analog computing devices.",
+      "createdAt": "Hellenistic Period, around 100 BC",
+      "discoveredAt": "19011901",
+      "discoveredBy": "Greek sponge divers",
+      "presentLocation": "National Archaeological Museum, Athens, Greece",
+      "adderName": "Shakawath Hossain",
+      "adderEmail": "shakawathhossain0@gmail.com",
+      "likeCount": 1,
+      "_id": "6a943435f67e1f7898c2ebdb"
     }
   ],
   "LikedArtifacts": [
@@ -62,6 +90,16 @@
       "userEmail": "shakawathhossain0@gmail.com",
       "artifactId": "6a93c78e1b4f4c2e8a1d0001",
       "_id": "6a93d230f67e1f7898c2ebd3"
+    },
+    {
+      "userEmail": "shakawathhossain0@gmail.com",
+      "artifactId": "6a9431b5f67e1f7898c2ebd9",
+      "_id": "6a943200f67e1f7898c2ebda"
+    },
+    {
+      "userEmail": "shakawathhossain0@gmail.com",
+      "artifactId": "6a943435f67e1f7898c2ebdb",
+      "_id": "6a943d8af67e1f7898c2ebde"
     }
   ]
 }
